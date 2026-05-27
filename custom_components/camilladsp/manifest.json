@@ -7,5 +7,6 @@
   "documentation": "https://github.com/kwerner72/homeassistant-camilladsp",
   "issue_tracker": "https://github.com/kwerner72/homeassistant-camilladsp/issues",
   "requirements": [],
-  "version": "1.0.1"
+  "version": "1.1.0",
+  "homeassistant": ">=2025.1.0"
 }

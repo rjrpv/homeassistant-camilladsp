@@ -19,10 +19,3 @@ class CDSPEntity(CoordinatorEntity[CDSPData]):  # type:ignore [misc]
     ) -> None:
         """Initialise the gateway."""
         super().__init__(coordinator)
-
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self.unique_id)},
-            manufacturer=NAME,
-            name=NAME,
-            model=VERSION,
-        )

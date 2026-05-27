@@ -1,7 +1,7 @@
 import logging
 
+from homeassistant.config_entries import ConfigEntryAuthFailed
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .cdsp import CDSPClient
@@ -21,7 +21,7 @@ class CDSPDataUpdateCoordinator(DataUpdateCoordinator[CDSPData]):  # type: ignor
 
     async def _async_update_data(self) -> CDSPData:
         if self.hass.is_stopping:
-            return None
+            raise UpdateFailed("Home Assistant is stopping")
 
         try:
             return await self.cdsp.update()

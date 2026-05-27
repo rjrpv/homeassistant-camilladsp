@@ -137,6 +137,7 @@ class CDSPMediaPlayer(CDSPEntity, MediaPlayerEntity):  # type: ignore[misc]
         self._set_attrs_from_data()
         self.async_write_ha_state()
 
+    @property
     def available(self) -> bool:
         """Return True if entity is available."""
         return self._attr_available
