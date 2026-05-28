@@ -43,16 +43,22 @@ ENTITY_DESC = MediaPlayerEntityDescription(
 async def async_setup_entry(hass: HomeAssistant,
                             config_entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback) -> None:
+    LOGGER.info("CamillaDSP media_player async_setup_entry called, entry_id=%s", config_entry.entry_id)
+
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    LOGGER.info("CamillaDSP media_player: retrieved coordinator from hass.data")
 
     volume_min = config_entry.options.get(CONFIG_VOLUME_MIN)
     volume_max = config_entry.options.get(CONFIG_VOLUME_MAX)
     volume_step = config_entry.options.get(CONFIG_VOLUME_STEP)
+    LOGGER.info("CamillaDSP media_player: volume options min=%s, max=%s, step=%s", volume_min, volume_max, volume_step)
 
     entities = []
     entities.append(CDSPMediaPlayer(config_entry.entry_id, coordinator, ENTITY_DESC, volume_min, volume_max, volume_step))
+    LOGGER.info("CamillaDSP media_player: created %d entity/entities", len(entities))
 
     async_add_entities(entities, update_before_add=False)
+    LOGGER.info("CamillaDSP media_player: entities added")
 
     platform = entity_platform.async_get_current_platform()
     platform.async_register_entity_service(
@@ -62,6 +68,7 @@ async def async_setup_entry(hass: HomeAssistant,
         },
         "async_set_volume_level_db",
     )
+    LOGGER.info("CamillaDSP media_player: service %s registered", SERVICE_VOLUME_DB_SET)
 
 
 class CDSPMediaPlayer(CDSPEntity, MediaPlayerEntity):  # type: ignore[misc]

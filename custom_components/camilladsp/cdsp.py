@@ -32,6 +32,7 @@ class CDSPClient:
 
         # Parse URL to extract host and port
         parsed = urlparse(url)
+        LOGGER.info("CamillaDSP CDSPClient init: parsed url='%s', scheme='%s', hostname=%s, port=%s", url, parsed.scheme, parsed.hostname, parsed.port)
 
         # Validate URL has a valid scheme
         if parsed.scheme not in ("http", "https", "ws", "wss", ""):
@@ -48,10 +49,11 @@ class CDSPClient:
         self._host = parsed.hostname
         self._port = parsed.port
 
-        log = f"CamillaDSP client initialized for {self._host}:{self._port}"
-        LOGGER.info(log)
+        LOGGER.info("CamillaDSP CDSPClient initialized: host=%s, port=%s", self._host, self._port)
 
+        LOGGER.info("CamillaDSP creating CamillaClient(%s, %s)...", self._host, self._port)
         self._client = CamillaClient(self._host, self._port)
+        LOGGER.info("CamillaDSP CamillaClient created successfully")
 
         md5 = hashlib.md5()
         md5.update(url.encode('utf-8'))
@@ -92,27 +94,26 @@ class CDSPClient:
 
     async def connect(self) -> None:
         """Connect to CamillaDSP and validate connectivity."""
-        log = f"CamillaDSP connecting to {self._host}:{self._port}"
-        LOGGER.info(log)
+        LOGGER.info("CamillaDSP connect() called for %s:%s", self._host, self._port)
 
         try:
             # First establish the WebSocket connection
+            LOGGER.info("CamillaDSP calling _client.connect...")
             await self.hass.async_add_executor_job(self._client.connect)
+            LOGGER.info("CamillaDSP _client.connect returned successfully")
             # Then validate by fetching data
+            LOGGER.info("CamillaDSP calling update() to validate connection...")
             await self.update()
             self._connected = True
-            log = f"CamillaDSP connected successfully to {self._host}:{self._port}"
-            LOGGER.info(log)
+            LOGGER.info("CamillaDSP connected successfully to %s:%s", self._host, self._port)
         except ApiError as e:
             self._connected = False
-            log = f"CamillaDSP API error during connection: {e}"
-            LOGGER.error(log)
+            LOGGER.error("CamillaDSP API error during connection: %s", e)
             raise
         except Exception as e:
             self._connected = False
-            log = f"CamillaDSP unable to connect to {self._host}:{self._port}: {e}"
-            LOGGER.error(log)
-            raise ApiError(f"Failed to connect to CamillaDSP at {self._host}:{self._port}: {e}") from e
+            LOGGER.error("CamillaDSP unable to connect to %s:%s: %s: %s", self._host, self._port, type(e).__name__, e, exc_info=True)
+            raise ApiError(f"Failed to connect to CamillaDSP at {self._host}:{self._port}: {type(e).__name__}: {e}") from e
 
     @property
     def connected(self) -> bool:
@@ -130,40 +131,47 @@ class CDSPClient:
 
         try:
             # Get state via general.state()
+            LOGGER.info("CamillaDSP update: calling _client.general.state...")
             cdsp_state = await self.hass.async_add_executor_job(self._client.general.state)
+            LOGGER.info("CamillaDSP update: general.state returned '%s'", cdsp_state)
             state = self._map_state(cdsp_state)
+            LOGGER.info("CamillaDSP update: mapped state to %s", state)
 
             if state != MediaPlayerState.OFF:
                 # Get capture rate
+                LOGGER.info("CamillaDSP update: calling _client.general.capture_rate...")
                 capturerate = await self.hass.async_add_executor_job(self._client.general.capture_rate)
+                LOGGER.info("CamillaDSP update: capture_rate=%s", capturerate)
 
                 # Get volume via volume.main_volume()
+                LOGGER.info("CamillaDSP update: calling _client.volume.main_volume...")
                 volume = float(await self.hass.async_add_executor_job(self._client.volume.main_volume))
+                LOGGER.info("CamillaDSP update: volume=%s", volume)
 
                 # Get mute via volume.main_mute()
+                LOGGER.info("CamillaDSP update: calling _client.volume.main_mute...")
                 mute = bool(await self.hass.async_add_executor_job(self._client.volume.main_mute))
+                LOGGER.info("CamillaDSP update: mute=%s", mute)
 
                 # Get current config filepath via config.file_path()
+                LOGGER.info("CamillaDSP update: calling _client.config.file_path...")
                 source = await self.hass.async_add_executor_job(self._client.config.file_path)
+                LOGGER.info("CamillaDSP update: source=%s", source)
 
                 # Note: There is no endpoint to enumerate stored configs.
                 source_list = []
 
         except CamillaError as e:
-            log = f"CamillaDSP API error from {self._host}:{self._port}: {e}"
-            LOGGER.error(log)
+            LOGGER.error("CamillaDSP API error from %s:%s: %s", self._host, self._port, e)
             raise ApiError(f"CamillaDSP API error: {e}") from e
         except ConnectionRefusedError as e:
-            log = f"CamillaDSP connection refused to {self._host}:{self._port}: {e}"
-            LOGGER.error(log)
+            LOGGER.error("CamillaDSP connection refused to %s:%s: %s", self._host, self._port, e)
             raise ApiError(f"Connection refused to {self._host}:{self._port}: {e}") from e
         except IOError as e:
-            log = f"CamillaDSP WebSocket error to {self._host}:{self._port}: {e}"
-            LOGGER.error(log)
+            LOGGER.error("CamillaDSP WebSocket error to %s:%s: %s", self._host, self._port, e)
             raise ApiError(f"WebSocket error: {e}") from e
         except Exception as e:
-            log = f"CamillaDSP unexpected error from {self._host}:{self._port}: {type(e).__name__}: {e}"
-            LOGGER.error(log, exc_info=True)
+            LOGGER.error("CamillaDSP unexpected error from %s:%s: %s: %s", self._host, self._port, type(e).__name__, e, exc_info=True)
             raise ApiError(f"Unexpected error from CamillaDSP: {type(e).__name__}: {e}") from e
 
         log = f"CamillaDSP update complete: state={state}, volume={volume}, source={source}"

@@ -19,11 +19,16 @@ class CDSPDataUpdateCoordinator(DataUpdateCoordinator[CDSPData]):  # type: ignor
         self.cdsp = cdsp
 
     async def _async_update_data(self) -> CDSPData:
+        LOGGER.info("CamillaDSP coordinator _async_update_data called")
         if self.hass.is_stopping:
+            LOGGER.warning("CamillaDSP coordinator: Home Assistant is stopping")
             raise UpdateFailed("Home Assistant is stopping")
 
         try:
-            return await self.cdsp.update()
+            LOGGER.info("CamillaDSP coordinator: calling cdsp.update()...")
+            data = await self.cdsp.update()
+            LOGGER.info("CamillaDSP coordinator: cdsp.update() returned, data=%s", data)
+            return data
 
         except ApiError as err:
             LOGGER.error("CamillaDSP API error during data update: %s", err)

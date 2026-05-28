@@ -46,27 +46,26 @@ async def validate_data_input(hass: HomeAssistant, data: dict) -> dict[str, Any]
     """Validate the user input for the config flow by testing connectivity to CamillaDSP."""
 
     url = data[CONFIG_URL]
-    log = f"CamillaDSP validating connection to {url}"
-    _LOGGER.info(log)
+    _LOGGER.info("CamillaDSP validate_data_input called with url=%s", url)
 
     try:
+        _LOGGER.info("CamillaDSP validate_data_input: creating CDSPClient...")
         cdsp = CDSPClient(hass, url)
+        _LOGGER.info("CamillaDSP validate_data_input: CDSPClient created")
     except InvalidUrl as ex:
-        log = f"CamillaDSP invalid URL: {url} - {ex}"
-        _LOGGER.error(log)
+        _LOGGER.error("CamillaDSP invalid URL: %s - %s", url, ex)
         raise InvalidUrl(str(ex)) from ex
 
     try:
+        _LOGGER.info("CamillaDSP validate_data_input: calling cdsp.connect()...")
         await cdsp.connect()
+        _LOGGER.info("CamillaDSP validate_data_input: cdsp.connect() returned")
         if not cdsp.connected:
-            log = f"CamillaDSP client is not connected to {url}"
-            _LOGGER.error(log)
+            _LOGGER.error("CamillaDSP client is not connected to %s", url)
             raise CannotConnect
-        log = f"CamillaDSP connection to {url} validated successfully"
-        _LOGGER.info(log)
+        _LOGGER.info("CamillaDSP connection to %s validated successfully", url)
     except ApiError as ex:
-        log = f"CamillaDSP failed to connect to {url}: {ex}"
-        _LOGGER.error(log)
+        _LOGGER.error("CamillaDSP failed to connect to %s: %s", url, ex)
         raise CannotConnect from ex
 
 async def validate_options_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
