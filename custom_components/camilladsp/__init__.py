@@ -8,7 +8,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
-from .cdsp import ApiError, CDSPClient
+from .cdsp import ApiError, CDSPClient, InvalidUrl
 from .const import CONFIG_URL, DOMAIN
 from .coordinator import CDSPDataUpdateCoordinator
 
@@ -41,10 +41,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         log = f"CamillaDSP unable to connect to {url}: {ex}"
         LOGGER.error(log)
         raise ConfigEntryNotReady(f"Error while communicating to CamillaDSP at {url}: {ex}") from ex
-    except Exception as ex:
-        log = f"CamillaDSP unexpected error during setup for {url}: {ex}"
+    except InvalidUrl as ex:
+        log = f"CamillaDSP invalid URL {url}: {ex}"
         LOGGER.error(log)
-        raise ConfigEntryNotReady(f"Unexpected error during setup: {ex}") from ex
+        raise ConfigEntryNotReady(f"Invalid CamillaDSP URL: {ex}") from ex
+    except Exception as ex:
+        log = f"CamillaDSP unexpected error during setup for {url}: {type(ex).__name__}: {ex}"
+        LOGGER.error(log, exc_info=True)
+        raise ConfigEntryNotReady(f"Unexpected error during setup: {type(ex).__name__}: {ex}") from ex
 
     if not cdsp.connected:
         log = f"CamillaDSP client is not connected to {url} after setup"

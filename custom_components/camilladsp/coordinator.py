@@ -1,6 +1,5 @@
 import logging
 
-from homeassistant.config_entries import ConfigEntryAuthFailed
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -27,6 +26,8 @@ class CDSPDataUpdateCoordinator(DataUpdateCoordinator[CDSPData]):  # type: ignor
             return await self.cdsp.update()
 
         except ApiError as err:
+            LOGGER.error("CamillaDSP API error during data update: %s", err)
             raise UpdateFailed(f"Error communicating with CamillaDSP API: {err}") from err
         except Exception as err:
-            raise ConfigEntryAuthFailed from err
+            LOGGER.error("CamillaDSP unexpected error during data update: %s: %s", type(err).__name__, err, exc_info=True)
+            raise UpdateFailed(f"Unexpected error from CamillaDSP: {type(err).__name__}: {err}") from err

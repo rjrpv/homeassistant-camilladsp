@@ -19,17 +19,37 @@ LOGGER = logging.getLogger(__name__)
 class ApiError(Exception):
     """Error to indicate something wrong with the API."""
 
+class InvalidUrl(Exception):
+    """Error to indicate the provided URL is invalid."""
+
 class CDSPClient:
     """Set up CamillaDSP using the official pycamilladsp library."""
 
     def __init__(self, hass: HomeAssistant, url: str) -> None:
         """Initialize CamillaDSP module."""
         self.hass = hass
+        self._url = url
 
         # Parse URL to extract host and port
         parsed = urlparse(url)
-        self._host = parsed.hostname or "127.0.0.1"
-        self._port = parsed.port or 1234
+
+        # Validate URL has a valid scheme
+        if parsed.scheme not in ("http", "https", "ws", "wss", ""):
+            raise InvalidUrl(f"Invalid URL scheme '{parsed.scheme}' in '{url}'. Use http://, https://, ws://, wss://, or a bare host:port.")
+
+        # Validate URL has a valid hostname
+        if not parsed.hostname:
+            raise InvalidUrl(f"No hostname found in URL '{url}'. Expected format: host:port or http://host:port")
+
+        # Validate port is specified and valid
+        if parsed.port is None:
+            raise InvalidUrl(f"No port found in URL '{url}'. Expected format: host:port or http://host:port")
+
+        self._host = parsed.hostname
+        self._port = parsed.port
+
+        log = f"CamillaDSP client initialized for {self._host}:{self._port}"
+        LOGGER.info(log)
 
         self._client = CamillaClient(self._host, self._port)
 
@@ -130,21 +150,21 @@ class CDSPClient:
                 source_list = []
 
         except CamillaError as e:
-            log = f"CamillaDSP error: CamillaError from {self._host}:{self._port}: {e}"
-            LOGGER.warning(log)
-            raise ApiError(f"CamillaDSP error: {e}") from e
+            log = f"CamillaDSP API error from {self._host}:{self._port}: {e}"
+            LOGGER.error(log)
+            raise ApiError(f"CamillaDSP API error: {e}") from e
         except ConnectionRefusedError as e:
-            log = f"CamillaDSP connection refused: {self._host}:{self._port}: {e}"
-            LOGGER.warning(log)
-            raise ApiError(f"Connection refused: {e}") from e
+            log = f"CamillaDSP connection refused to {self._host}:{self._port}: {e}"
+            LOGGER.error(log)
+            raise ApiError(f"Connection refused to {self._host}:{self._port}: {e}") from e
         except IOError as e:
-            log = f"CamillaDSP websocket error: {self._host}:{self._port}: {e}"
-            LOGGER.warning(log)
+            log = f"CamillaDSP WebSocket error to {self._host}:{self._port}: {e}"
+            LOGGER.error(log)
             raise ApiError(f"WebSocket error: {e}") from e
         except Exception as e:
-            log = f"CamillaDSP error: call failed: {e}"
-            LOGGER.warning(log)
-            raise ApiError(f"API call failed: {e}") from e
+            log = f"CamillaDSP unexpected error from {self._host}:{self._port}: {type(e).__name__}: {e}"
+            LOGGER.error(log, exc_info=True)
+            raise ApiError(f"Unexpected error from CamillaDSP: {type(e).__name__}: {e}") from e
 
         log = f"CamillaDSP update complete: state={state}, volume={volume}, source={source}"
         LOGGER.debug(log)

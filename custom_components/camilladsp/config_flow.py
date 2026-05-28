@@ -9,7 +9,7 @@ from homeassistant import config_entries, exceptions
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.core import HomeAssistant, callback
 
-from .cdsp import ApiError, CDSPClient
+from .cdsp import ApiError, CDSPClient, InvalidUrl
 from .const import (
     CONFIG_URL,
     CONFIG_VOLUME_MAX,
@@ -23,7 +23,7 @@ _LOGGER = logging.getLogger(__name__)
 
 DATA_SCHEMA = vol.Schema(
     {
-        vol.Required(CONFIG_URL): str
+        vol.Required(CONFIG_URL, description={"suggest": "192.168.1.100:1234"}): str
     }
 )
 
@@ -49,7 +49,13 @@ async def validate_data_input(hass: HomeAssistant, data: dict) -> dict[str, Any]
     log = f"CamillaDSP validating connection to {url}"
     _LOGGER.info(log)
 
-    cdsp = CDSPClient(hass, url)
+    try:
+        cdsp = CDSPClient(hass, url)
+    except InvalidUrl as ex:
+        log = f"CamillaDSP invalid URL: {url} - {ex}"
+        _LOGGER.error(log)
+        raise InvalidUrl(str(ex)) from ex
+
     try:
         await cdsp.connect()
         if not cdsp.connected:
@@ -95,8 +101,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                            })
         except CannotConnect:
             errors["base"] = "cannot_connect"
-        except InvalidHost:
-            errors[CONFIG_URL] = "cannot_connect"
+        except InvalidUrl as e:
+            _LOGGER.error("Invalid URL provided: %s", e)
+            errors[CONFIG_URL] = "invalid_url"
         except Exception:  # pylint: disable=broad-except
             _LOGGER.exception("Unexpected exception")
             errors["base"] = "unknown"
@@ -142,9 +149,5 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 class CannotConnect(exceptions.HomeAssistantError):
     """Error to indicate we cannot connect."""
 
-
-class InvalidHost(exceptions.HomeAssistantError):
-    """Error to indicate there is an invalid hostname."""
-
 class InvalidValue(exceptions.HomeAssistantError):
-    """Error to indicate there is an invalid hostname."""
+    """Error to indicate an invalid configuration value."""

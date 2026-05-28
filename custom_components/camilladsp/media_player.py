@@ -29,6 +29,7 @@ from .const import (
     SERVICE_VOLUME_DB_SET,
 )
 from .coordinator import CDSPDataUpdateCoordinator
+from .cdsp import ApiError
 from .entity import CDSPEntity
 from .model import CDSPData
 
@@ -147,25 +148,45 @@ class CDSPMediaPlayer(CDSPEntity, MediaPlayerEntity):  # type: ignore[misc]
         return self._extra_state_attributes
 
     async def async_set_volume_level(self, volume: float) -> None:
-        volumeDb = self._convertToDb(volume)
-        await self.coordinator.cdsp.async_set_volume(volumeDb)
-        self._data.volume = volumeDb
-        self._async_update_attrs_write_ha_state()
+        try:
+            volumeDb = self._convertToDb(volume)
+            await self.coordinator.cdsp.async_set_volume(volumeDb)
+            self._data.volume = volumeDb
+            self._async_update_attrs_write_ha_state()
+        except ApiError as err:
+            LOGGER.error("Failed to set volume level to %s (%sdB): %s", volume, volumeDb, err)
+        except Exception as err:
+            LOGGER.error("Unexpected error setting volume level: %s: %s", type(err).__name__, err, exc_info=True)
 
     async def async_set_volume_level_db(self, volume_db: float) -> None:
-        await self.coordinator.cdsp.async_set_volume(volume_db)
-        self._data.volume = volume_db
-        self._async_update_attrs_write_ha_state()
+        try:
+            await self.coordinator.cdsp.async_set_volume(volume_db)
+            self._data.volume = volume_db
+            self._async_update_attrs_write_ha_state()
+        except ApiError as err:
+            LOGGER.error("Failed to set volume level to %sdB: %s", volume_db, err)
+        except Exception as err:
+            LOGGER.error("Unexpected error setting volume level: %s: %s", type(err).__name__, err, exc_info=True)
 
     async def async_mute_volume(self, mute: bool) -> None:
-        await self.coordinator.cdsp.async_set_muted(mute)
-        self._data.mute = mute
-        self._async_update_attrs_write_ha_state()
+        try:
+            await self.coordinator.cdsp.async_set_muted(mute)
+            self._data.mute = mute
+            self._async_update_attrs_write_ha_state()
+        except ApiError as err:
+            LOGGER.error("Failed to set mute to %s: %s", mute, err)
+        except Exception as err:
+            LOGGER.error("Unexpected error setting mute: %s: %s", type(err).__name__, err, exc_info=True)
 
     async def async_select_source(self, source: str) -> None:
-        await self.coordinator.cdsp.async_select_source(source)
-        self._data.source = source
-        self._async_update_attrs_write_ha_state()
+        try:
+            await self.coordinator.cdsp.async_select_source(source)
+            self._data.source = source
+            self._async_update_attrs_write_ha_state()
+        except ApiError as err:
+            LOGGER.error("Failed to select source '%s': %s", source, err)
+        except Exception as err:
+            LOGGER.error("Unexpected error selecting source: %s: %s", type(err).__name__, err, exc_info=True)
 
     def _convertToDb(self, volume: float) -> float:
         if isinstance(volume, (int,float)):

@@ -7,10 +7,11 @@
         }
       }
     },
-    "error": {
-      "cannot_connect": "Unable to connect to CamillaDSP",
-      "unknown": "Unknown error occurred"
-    }
+      "error": {
+        "cannot_connect": "Unable to connect to CamillaDSP",
+        "invalid_url": "Invalid URL format. Expected format: host:port or http://host:port",
+        "unknown": "Unknown error occurred"
+      }
   },
   "options": {
     "step": {
