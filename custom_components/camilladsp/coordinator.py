@@ -4,7 +4,7 @@ from homeassistant.config_entries import ConfigEntryAuthFailed
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .cdsp import CDSPClient
+from .cdsp import ApiError, CDSPClient
 from .const import DOMAIN
 from .model import CDSPData
 
@@ -27,9 +27,6 @@ class CDSPDataUpdateCoordinator(DataUpdateCoordinator[CDSPData]):  # type: ignor
             return await self.cdsp.update()
 
         except ApiError as err:
-            raise UpdateFailed(f"Error communicating with API: {err}") from err
+            raise UpdateFailed(f"Error communicating with CamillaDSP API: {err}") from err
         except Exception as err:
             raise ConfigEntryAuthFailed from err
-
-class ApiError(Exception):
-    """Error to indicate something wrong with the API."""

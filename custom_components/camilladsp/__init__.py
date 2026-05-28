@@ -8,9 +8,9 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
-from .cdsp import CDSPClient
+from .cdsp import ApiError, CDSPClient
 from .const import CONFIG_URL, DOMAIN
-from .coordinator import ApiError, CDSPDataUpdateCoordinator
+from .coordinator import CDSPDataUpdateCoordinator
 
 SCAN_INTERVAL = timedelta(seconds=10)
 
@@ -28,14 +28,34 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     url = entry.data[CONFIG_URL]
 
+    log = f"CamillaDSP setting up entry for {url}"
+    LOGGER.info(log)
+
     # Initialize connection to camilladsp
     cdsp = CDSPClient(hass, url)
-    try:
-        await cdsp.update()
-    except ApiError as ex:
-        raise ConfigEntryNotReady("Error while communicating to CamillaDSP") from ex
 
-    LOGGER.debug(f"CamillaDSP entry: {entry}")
+    # Sanity check: validate connectivity before proceeding
+    try:
+        await cdsp.connect()
+    except ApiError as ex:
+        log = f"CamillaDSP unable to connect to {url}: {ex}"
+        LOGGER.error(log)
+        raise ConfigEntryNotReady(f"Error while communicating to CamillaDSP at {url}: {ex}") from ex
+    except Exception as ex:
+        log = f"CamillaDSP unexpected error during setup for {url}: {ex}"
+        LOGGER.error(log)
+        raise ConfigEntryNotReady(f"Unexpected error during setup: {ex}") from ex
+
+    if not cdsp.connected:
+        log = f"CamillaDSP client is not connected to {url} after setup"
+        LOGGER.error(log)
+        raise ConfigEntryNotReady(f"CamillaDSP client is not connected to {url}")
+
+    log = f"CamillaDSP connected to {url}, proceeding with setup"
+    LOGGER.info(log)
+
+    log = f"CamillaDSP entry: {entry}"
+    LOGGER.debug(log)
 
     coordinator = CDSPDataUpdateCoordinator(hass, cdsp, SCAN_INTERVAL)  # type: ignore[arg-type]
     await coordinator.async_config_entry_first_refresh()

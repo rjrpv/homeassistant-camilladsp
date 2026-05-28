@@ -9,7 +9,7 @@ from homeassistant import config_entries, exceptions
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.core import HomeAssistant, callback
 
-from .cdsp import CDSPClient
+from .cdsp import ApiError, CDSPClient
 from .const import (
     CONFIG_URL,
     CONFIG_VOLUME_MAX,
@@ -43,11 +43,25 @@ def get_options_schema(init_values: dict[str, Any]) -> vol.Schema:
 )
 
 async def validate_data_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
+    """Validate the user input for the config flow by testing connectivity to CamillaDSP."""
 
     url = data[CONFIG_URL]
+    log = f"CamillaDSP validating connection to {url}"
+    _LOGGER.info(log)
+
     cdsp = CDSPClient(hass, url)
-    if not await cdsp.update():
-        raise CannotConnect
+    try:
+        await cdsp.connect()
+        if not cdsp.connected:
+            log = f"CamillaDSP client is not connected to {url}"
+            _LOGGER.error(log)
+            raise CannotConnect
+        log = f"CamillaDSP connection to {url} validated successfully"
+        _LOGGER.info(log)
+    except ApiError as ex:
+        log = f"CamillaDSP failed to connect to {url}: {ex}"
+        _LOGGER.error(log)
+        raise CannotConnect from ex
 
 async def validate_options_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
 
