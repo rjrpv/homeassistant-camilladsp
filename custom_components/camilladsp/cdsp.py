@@ -44,22 +44,32 @@ class CDSPClient:
         self._connected: bool = False
 
     async def async_set_volume(self, volume: float):
-        await self.async_post_api(endpoint="setparam/volume", data=str(volume))
+        """Set volume in dB using POST /api/volume/set."""
+        await self.async_post_api(endpoint="volume/set", data={"volume": volume})
         self._volume = volume
 
     async def async_set_muted(self, muted: bool):
-        await self.async_post_api(endpoint="setparam/mute", data=str(muted))
+        """Set mute using POST /api/mute/set."""
+        await self.async_post_api(endpoint="mute/set", data={"muted": muted})
         self._mute = muted
 
     async def async_select_source(self, source: str):
-        data = f"{{\"name\":\"{source!s}\"}}"
-        await self.async_post_api(endpoint="setactiveconfigfile", data=data)
-        configData = await self.async_get_api(endpoint="getactiveconfigfile")
-        if json.loads(configData)["configFileName"] == source:
-            await self.async_post_api(endpoint="setconfig", data=configData)
+        """Select source by setting the config file path via POST /api/config/set/filepath, then POST /api/config/reload."""
+        # Set the new config file path
+        await self.async_post_api(endpoint="config/set/filepath", data={"filePath": source})
+
+        # Reload to apply the new config
+        await self.async_post_api(endpoint="config/reload", data={})
+
+        # Verify the config was applied by checking the filepath
+        configData = await self.async_get_api(endpoint="config/filepath")
+        filepath = json.loads(configData).get("filePath", "")
+
+        # Check if the source matches (compare basename or full path)
+        if filepath == source or filepath.endswith("/" + source):
             self._source = source
         else:
-            LOGGER.warning("Error setting active config file")
+            LOGGER.warning("Error setting active config file, got: %s, expected: %s", filepath, source)
 
     async def connect(self) -> None:
         """Connect to CamillaDSP API and validate connectivity."""
@@ -98,34 +108,46 @@ class CDSPClient:
         capturerate: int = 0
 
         try:
-            statusData = json.loads(await self.async_get_api(endpoint="status"))
-            match statusData["cdsp_status"]:
-                case 'INACTIVE':
+            # Get state via GET /api/status?command=GetState
+            statusData = json.loads(await self.async_get_api(endpoint="status", query={"command": "GetState"}))
+            cdsp_state = statusData.get("value", "").lower()
+
+            match cdsp_state:
+                case "inactive":
                     state = MediaPlayerState.STANDBY
-                case 'PAUSED':
+                case "paused":
                     state = MediaPlayerState.PAUSED
-                case 'RUNNING':
+                case "running":
                     state = MediaPlayerState.PLAYING
-                case 'STALLED':
+                case "stalled":
                     state = MediaPlayerState.IDLE
-                case 'STARTING':
+                case "starting":
                     state = MediaPlayerState.ON
+                case _:
+                    state = MediaPlayerState.OFF
 
             if state != MediaPlayerState.OFF:
-                if statusData.get("capturerate") is not None:
-                    capturerate = statusData["capturerate"]
-                else:
-                    capturerate = 0
+                # Get capture rate via GET /api/status?command=GetCaptureRate
+                capturerate_data = json.loads(
+                    await self.async_get_api(endpoint="status", query={"command": "GetCaptureRate"})
+                )
+                capturerate = int(capturerate_data.get("value", 0))
 
-                volume = float(await self.async_get_api(endpoint="getparam/volume"))
-                mute = (await self.async_get_api(endpoint="getparam/mute")) == "True"
-                source = (json.loads(await self.async_get_api(endpoint="getactiveconfigfile"))["configFileName"])
+                # Get volume via GET /api/volume/get
+                volume_data = json.loads(await self.async_get_api(endpoint="volume/get"))
+                volume = float(volume_data.get("volume", 0))
 
-                storedconfigs = json.loads(await self.async_get_api(endpoint="storedconfigs"))
+                # Get mute via GET /api/mute/get
+                mute_data = json.loads(await self.async_get_api(endpoint="mute/get"))
+                mute = bool(mute_data.get("muted", False))
+
+                # Get current config filepath via GET /api/config/filepath
+                source_data = json.loads(await self.async_get_api(endpoint="config/filepath"))
+                source = source_data.get("filePath", "")
+
+                # Note: There is no "storedconfigs" endpoint in the CamillaDSP API.
+                # source_list is left empty as there is no way to enumerate stored configs.
                 source_list = []
-                for config in storedconfigs:
-                    if config.get("name") is not None:
-                        source_list.append(config.get("name"))
 
         except ApiError:
             # Re-raise ApiError as-is (connection/API level errors)
@@ -149,7 +171,7 @@ class CDSPClient:
                         source_list=source_list,
                         capturerate=capturerate)
 
-    async def async_get_api(self, endpoint: str) -> Any:
+    async def async_get_api(self, endpoint: str, query: dict | None = None) -> Any:
         """Make a GET request to the CamillaDSP API."""
         url = f"{self.url}/api/{endpoint}"
         log = f"CamillaDSP GET {url}"
@@ -157,7 +179,7 @@ class CDSPClient:
 
         session = async_get_clientsession(self.hass)
         try:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)) as res:
+            async with session.get(url, params=query, timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)) as res:
                 if res.status != 200:
                     log = f"CamillaDSP API error: GET {url} returned status {res.status}"
                     LOGGER.warning(log)
@@ -175,15 +197,15 @@ class CDSPClient:
             raise ApiError(f"Request timed out: {e}") from e
 
 
-    async def async_post_api(self, endpoint: str, data: str) -> Any:
-        """Make a POST request to the CamillaDSP API."""
+    async def async_post_api(self, endpoint: str, data: dict) -> Any:
+        """Make a POST request to the CamillaDSP API with JSON body."""
         url = f"{self.url}/api/{endpoint}"
         log = f"CamillaDSP POST {url} data={data}"
         LOGGER.debug(log)
 
         session = async_get_clientsession(self.hass)
         try:
-            async with session.post(url, data=data, json=None, timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)) as res:
+            async with session.post(url, json=data, timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)) as res:
                 if res.status != 200:
                     log = f"CamillaDSP API error: POST {url} returned status {res.status}"
                     LOGGER.warning(log)
