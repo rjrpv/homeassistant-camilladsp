@@ -185,4 +185,5 @@ class CDSPClient:
             "stalled": MediaPlayerState.IDLE,
             "starting": MediaPlayerState.ON,
         }
-        return state_map.get(cdsp_state.lower(), MediaPlayerState.OFF)
+        LOGGER.info(f'Processing state: {cdsp_state}')
+        return state_map.get(str(cdsp_state).lower(), MediaPlayerState.OFF)
