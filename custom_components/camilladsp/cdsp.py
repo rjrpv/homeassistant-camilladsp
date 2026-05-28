@@ -179,10 +179,10 @@ class CDSPClient:
     def _map_state(self, cdsp_state: str) -> MediaPlayerState:
         """Map CamillaDSP state to MediaPlayerState."""
         state_map = {
-            "Inactive": MediaPlayerState.STANDBY,
-            "Paused": MediaPlayerState.PAUSED,
-            "Running": MediaPlayerState.PLAYING,
-            "Stalled": MediaPlayerState.IDLE,
-            "Starting": MediaPlayerState.ON,
+            "inactive": MediaPlayerState.OFF,
+            "paused": MediaPlayerState.PAUSED,
+            "running": MediaPlayerState.PLAYING,
+            "stalled": MediaPlayerState.IDLE,
+            "starting": MediaPlayerState.ON,
         }
-        return state_map.get(cdsp_state, MediaPlayerState.OFF)
+        return state_map.get(cdsp_state.lower(), MediaPlayerState.OFF)
