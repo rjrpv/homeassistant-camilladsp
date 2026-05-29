@@ -17,6 +17,7 @@ class CDSPDataUpdateCoordinator(DataUpdateCoordinator[CDSPData]):  # type: ignor
         """Initialize the coordinator."""
         super().__init__(hass, LOGGER, name=DOMAIN, update_interval=interval)
         self.cdsp = cdsp
+        LOGGER.info("CamillaDSP coordinator init.")
 
     async def _async_update_data(self) -> CDSPData:
         LOGGER.info("CamillaDSP coordinator _async_update_data called")

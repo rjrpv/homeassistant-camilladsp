@@ -6,7 +6,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 try:
-    from camilladsp import CamillaClient, CamillaError
+    from camilladsp import CamillaClient, CamillaError, ProcesingState
 except ImportError as e:
     logging.getLogger("custom_components.camilladsp").critical(
         "CamillaDSP: failed to import pycamilladsp library: %s: %s", type(e).__name__, e
@@ -193,11 +193,16 @@ class CDSPClient:
     def _map_state(self, cdsp_state: str) -> MediaPlayerState:
         """Map CamillaDSP state to MediaPlayerState."""
         state_map = {
-            "inactive": MediaPlayerState.OFF,
-            "paused": MediaPlayerState.PAUSED,
-            "running": MediaPlayerState.PLAYING,
-            "stalled": MediaPlayerState.IDLE,
-            "starting": MediaPlayerState.ON,
+            # "inactive"
+            ProcessingState.INACTIVE: MediaPlayerState.OFF,
+            # "paused"
+            ProcesingState.PAUSED: MediaPlayerState.PAUSED,
+            # "running"
+            ProcesingState.RUNNING: MediaPlayerState.PLAYING,
+            # "stalled"
+            ProcesingState.STALLED: MediaPlayerState.IDLE,
+            # "starting"
+            ProcessingState.STARTING: MediaPlayerState.ON,
         }
         LOGGER.info(f'Processing state: {cdsp_state}')
-        return state_map.get(str(cdsp_state).lower(), MediaPlayerState.OFF)
+        return state_map.get(cdsp_state, MediaPlayerState.OFF)
