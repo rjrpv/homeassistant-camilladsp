@@ -6,7 +6,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 try:
-    from camilladsp import CamillaClient, CamillaError, ProcesingState
+    from camilladsp import CamillaClient, CamillaError, ProcessingState
 except ImportError as e:
     logging.getLogger("custom_components.camilladsp").critical(
         "CamillaDSP: failed to import pycamilladsp library: %s: %s", type(e).__name__, e
@@ -196,11 +196,11 @@ class CDSPClient:
             # "inactive"
             ProcessingState.INACTIVE: MediaPlayerState.OFF,
             # "paused"
-            ProcesingState.PAUSED: MediaPlayerState.PAUSED,
+            ProcessingState.PAUSED: MediaPlayerState.PAUSED,
             # "running"
-            ProcesingState.RUNNING: MediaPlayerState.PLAYING,
+            ProcessingState.RUNNING: MediaPlayerState.PLAYING,
             # "stalled"
-            ProcesingState.STALLED: MediaPlayerState.IDLE,
+            ProcessingState.STALLED: MediaPlayerState.IDLE,
             # "starting"
             ProcessingState.STARTING: MediaPlayerState.ON,
         }
