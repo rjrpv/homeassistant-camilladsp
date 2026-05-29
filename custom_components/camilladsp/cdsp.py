@@ -145,8 +145,8 @@ class CDSPClient:
 
             if state != MediaPlayerState.OFF:
                 # Get capture rate
-                LOGGER.info("CamillaDSP update: calling _client.general.capture_rate...")
-                capturerate = await self.hass.async_add_executor_job(self._client.general.capture_rate)
+                LOGGER.info("CamillaDSP update: calling _client.rate.capture...")
+                capturerate = await self.hass.async_add_executor_job(self._client.rate.capture)
                 LOGGER.info("CamillaDSP update: capture_rate=%s", capturerate)
 
                 # Get volume via volume.main_volume()
