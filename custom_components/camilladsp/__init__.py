@@ -8,16 +8,36 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
-from .cdsp import ApiError, CDSPClient, InvalidUrl
-from .const import CONFIG_URL, DOMAIN
-from .coordinator import CDSPDataUpdateCoordinator
+try:
+    from .cdsp import ApiError, CDSPClient, InvalidUrl
+except ImportError as e:
+    logging.getLogger("custom_components.camilladsp").critical(
+        "CamillaDSP: failed to import cdsp module: %s: %s", type(e).__name__, e
+    )
+    raise
+
+try:
+    from .const import CONFIG_URL, DOMAIN
+except ImportError as e:
+    logging.getLogger("custom_components.camilladsp").critical(
+        "CamillaDSP: failed to import const module: %s: %s", type(e).__name__, e
+    )
+    raise
+
+try:
+    from .coordinator import CDSPDataUpdateCoordinator
+except ImportError as e:
+    logging.getLogger("custom_components.camilladsp").critical(
+        "CamillaDSP: failed to import coordinator module: %s: %s", type(e).__name__, e
+    )
+    raise
 
 SCAN_INTERVAL = timedelta(seconds=10)
 
 LOGGER = logging.getLogger(__name__)
 
-# Module-level canary — CRITICAL level cannot be suppressed by default log settings
-LOGGER.critical("CamillaDSP module loaded")
+# Module-level canary — logged at CRITICAL level so it cannot be suppressed
+LOGGER.critical("CamillaDSP: module loaded successfully, all imports OK")
 
 
 # List of platforms to support. There should be a matching .py file for each,

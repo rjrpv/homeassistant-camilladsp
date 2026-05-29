@@ -5,7 +5,13 @@ import logging
 from typing import Any
 from urllib.parse import urlparse
 
-from camilladsp import CamillaClient, CamillaError
+try:
+    from camilladsp import CamillaClient, CamillaError
+except ImportError as e:
+    logging.getLogger("custom_components.camilladsp").critical(
+        "CamillaDSP: failed to import pycamilladsp library: %s: %s", type(e).__name__, e
+    )
+    raise
 
 from homeassistant.components.media_player import MediaPlayerState
 from homeassistant.core import HomeAssistant
