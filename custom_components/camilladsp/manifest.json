@@ -6,7 +6,7 @@
   "dependencies": [],
   "documentation": "https://github.com/kwerner72/homeassistant-camilladsp",
   "issue_tracker": "https://github.com/kwerner72/homeassistant-camilladsp/issues",
-  "requirements": ["pycamilladsp@git+https://github.com/HEnquist/pycamilladsp.git@v4.0.0"],
+  "requirements": ["camilladsp@git+https://github.com/HEnquist/pycamilladsp.git@v4.0.0"],
   "version": "1.1.0",
   "homeassistant": ">=2025.1.0"
 }
